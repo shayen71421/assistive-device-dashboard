@@ -5,6 +5,9 @@ import pandas as pd
 from clean import load_and_clean_data
 # ---------------- LOAD DATA ----------------
 from streamlit_autorefresh import st_autorefresh
+
+st.set_page_config(page_title="Assistive Device Dashboard", layout="wide", initial_sidebar_state="expanded")
+
 st_autorefresh(interval=120000, key="autorefresh")
 
 @st.cache_data(ttl=120)
@@ -12,21 +15,23 @@ def load_data_streamlit():
     return load_and_clean_data()        
 df=load_data_streamlit()
 
-st.set_page_config(page_title="Assistive Device Dashboard", layout="wide")
-
 # ---------------- TITLE ----------------
 st.title("📊 Assistive Device Needs Dashboard")
 
 st.markdown("Comprehensive view of device requirements across schools and districts")
-
+st.markdown("---")
 st.divider()
 
 # ---------------- GLOBAL METRICS ----------------
+st.markdown(""" <style>.kpi-card {background-color: #1E1E2E; border-radius: 12px; padding: 20px; text-align: center; color: white;}</style> """, unsafe_allow_html=True)
 col1, col2, col3 = st.columns(3)
-
-col1.metric("Total Devices Required", len(df))
-col2.metric("Total Schools", df['School_Name'].nunique())
-col3.metric("Total Districts", df['District'].nunique())
+ 
+with col1:
+    st.markdown(f"<div class="kpi-card"><h3>Total Devices</h3><h1>{len(df)}</h1></div>", unsafe_allow_html=True)
+with col2:
+    st.markdown(f"<div class="kpi-card"><h3>Total Schools</h3><h1>{df['School_Name'].nunique()}</h1></div>", unsafe_allow_html=True)    
+with col3:
+    st.markdown(f"<div class="kpi-card"><h3>Total Districts</h3><h1>{df['District'].nunique()}</h1></div>", unsafe_allow_html=True)
 
 st.divider()
 
@@ -116,61 +121,179 @@ filtered_df = df[
 # Apply priority only if exists
 if selected_priorities is not None:
     filtered_df = filtered_df[filtered_df['Priority'].isin(selected_priorities)]
+
 # ---------------- TOTAL DEVICE COUNT ----------------
-st.subheader("📦 Total Device Requirement")
+st.markdown("##📦 Total Device Requirement")
 
 col1, col2 = st.columns(2)
 
-col1.metric("District Total Devices", len(filtered_df))
-col2.metric("School Total Devices", len(filtered_df))
+col1.metric("Devices per District", round(len(filtered_df)/ filtered_df['District'].nunique(), 1))
+col2.metric("Devices per School", round(len(filtered_df)/ filtered_df['School_Name'].nunique(), 1))
+col3.metric("Most Needed Device", filtered_df['Device'].value_counts().idxmax())
 
-# ---------------- DEVICE COUNT ----------------
-st.subheader("🔧 Device Distribution")
+import plotly.express as px
+# ==================== DISTRIBUTION ANALYSIS ====================
+st.markdown("## 📊 Distribution Analysis")
+st.markdown("<br>", unsafe_allow_html=True)
 
-st.bar_chart(filtered_df['Device'].value_counts())
+# -------------------- ROW 1 --------------------
+col1, col2 = st.columns(2)
 
-# ---------------- DEVICE CATEGORY ----------------
-st.subheader("🧩 Device Category Distribution")
+# 🔧 DEVICE DISTRIBUTION (GREEN)
+with col1:
+    st.markdown("### 🔧 Device Distribution")
 
-st.bar_chart(filtered_df['Device Category'].value_counts())
+    device_counts = (
+        filtered_df['Device']
+        .value_counts()
+        .reset_index()
+        .rename(columns={'index': 'Device', 'Device': 'Count'})
+        .sort_values(by='Count', ascending=False)
+    )
 
-st.subheader("Device Priority Distribution ")
-st.bar_chart(filtered_df['Priority'].value_counts())  
+    fig = px.bar(
+        device_counts,
+        x='Device',
+        y='Count',
+        color='Count',
+        color_continuous_scale='Greens'
+    )
 
-# ---------------- DISABILITY CATEGORY ----------------
-st.subheader("♿ Disability Category Distribution")
+    fig.update_layout(xaxis_title="", yaxis_title="Count")
+    st.plotly_chart(fig, use_container_width=True)
 
-st.bar_chart(filtered_df['disability_cleaned'].value_counts())
+# 🧩 DEVICE CATEGORY (PURPLE)
+with col2:
+    st.markdown("### 🧩 Device Category Distribution")
 
-# ---------------- SOCIAL CATEGORY ----------------
-st.subheader("👥 Social Category Distribution")
+    category_counts = (
+        filtered_df['Device Category']
+        .value_counts()
+        .reset_index()
+        .rename(columns={'index': 'Category', 'Device Category': 'Count'})
+        .sort_values(by='Count', ascending=False)
+    )
 
-st.bar_chart(filtered_df['Social Category'].value_counts())
+    fig = px.bar(
+        category_counts,
+        x='Category',
+        y='Count',
+        color='Count',
+        color_continuous_scale='Purples'
+    )
 
-# ---------------- GENDER RATIO (SCHOOL) ----------------
-st.subheader("👩‍🦰👨 Gender Distribution (School)")
+    fig.update_layout(xaxis_title="", yaxis_title="Count")
+    st.plotly_chart(fig, use_container_width=True)
 
-gender_school = filtered_df['Gender'].value_counts()
+st.markdown("<br>", unsafe_allow_html=True)
 
-st.bar_chart(gender_school)
+# -------------------- ROW 2 --------------------
+col3, col4 = st.columns(2)
 
-# ---------------- GENDER RATIO (DISTRICT) ----------------
-st.subheader("👩‍🦰👨 Gender Distribution (District)")
+# ⚡ PRIORITY (ORANGE)
+with col3:
+    st.markdown("### ⚡ Device Priority Distribution")
 
-gender_district = filtered_df['Gender'].value_counts()
+    priority_counts = (
+        filtered_df['Priority']
+        .value_counts()
+        .reset_index()
+        .rename(columns={'index': 'Priority', 'Priority': 'Count'})
+        .sort_values(by='Count', ascending=False)
+    )
 
-st.bar_chart(gender_district)
+    fig = px.bar(
+        priority_counts,
+        x='Priority',
+        y='Count',
+        color='Count',
+        color_continuous_scale='Oranges'
+    )
 
-# ---------------- DISTRICT LEVEL DEVICE ANALYSIS ----------------
-st.subheader("🏙 Device Distribution (District Level)")
+    fig.update_layout(xaxis_title="", yaxis_title="Count")
+    st.plotly_chart(fig, use_container_width=True)
 
-st.bar_chart(filtered_df['Device'].value_counts())
+# ♿ DISABILITY (BLUE)
+with col4:
+    st.markdown("### ♿ Disability Distribution")
 
-# ---------------- DISTRICT CATEGORY ANALYSIS ----------------
-st.subheader("🧩 Device Category (District Level)")
+    disability_counts = (
+        filtered_df['disability_cleaned']
+        .value_counts()
+        .reset_index()
+        .rename(columns={'index': 'Disability', 'disability_cleaned': 'Count'})
+        .sort_values(by='Count', ascending=False)
+    )
 
-st.bar_chart(filtered_df['Device Category'].value_counts())
+    fig = px.bar(
+        disability_counts,
+        x='Disability',
+        y='Count',
+        color='Count',
+        color_continuous_scale='Blues'
+    )
+
+    fig.update_layout(xaxis_title="", yaxis_title="Count")
+    st.plotly_chart(fig, use_container_width=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# -------------------- ROW 3 --------------------
+col5, col6 = st.columns(2)
+
+# 👥 SOCIAL CATEGORY (MAGMA STYLE)
+with col5:
+    st.markdown("### 👥 Social Category Distribution")
+
+    social_counts = (
+        filtered_df['Social Category']
+        .value_counts()
+        .reset_index()
+        .rename(columns={'index': 'Category', 'Social Category': 'Count'})
+        .sort_values(by='Count', ascending=False)
+    )
+
+    fig = px.bar(
+        social_counts,
+        x='Category',
+        y='Count',
+        color='Count',
+        color_continuous_scale='Magma'
+    )
+
+    fig.update_layout(xaxis_title="", yaxis_title="Count")
+    st.plotly_chart(fig, use_container_width=True)
+
+# 🚻 GENDER (CUSTOM COLORS)
+with col6:
+    st.markdown("### 🚻 Gender Distribution")
+
+    gender_counts = (
+        filtered_df['Gender']
+        .value_counts()
+        .reset_index()
+        .rename(columns={'index': 'Gender', 'Gender': 'Count'})
+        .sort_values(by='Count', ascending=False)
+    )
+
+    fig = px.pie(
+        gender_counts,
+        names='Gender',
+        values='Count',
+        color_discrete_sequence=['#4CAF50', '#2196F3']
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
 
 # ---------------- OPTIONAL DATA VIEW ----------------
-with st.expander("📄 View Filtered Data"):
+with st.expander("📄 View  & Download Filtered Data"):
     st.dataframe(filtered_df)
+
+    csv = filtered_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="Download CSV",
+        data=csv,
+        file_name='filtered_device_data.csv',
+        mime='text/csv'
+    )
