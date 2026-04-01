@@ -1,6 +1,9 @@
 
 # Assistive Device Dashboard
 
+[![Open Dashboard](https://img.sheilds.io/badge/Streamlit-live_App-green?style=for-the-badge&logo=streamlit)](https://assistive-device-dashboard-rxxvsrfpa6smbzkhzuedqg.streamlit.app/)
+
+
 This project analyzes assistive device requirements across schools using:
 
 - Streamlit (Interactive Dashboard)
