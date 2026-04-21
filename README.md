@@ -2,6 +2,12 @@
 
 Streamlit dashboard for reviewing assistive device requests across schools, districts, learner profiles, and catalog size requirements.
 
+
+## 🚀 Live Dashboard
+
+[![Open Dashboard](https://img.shields.io/badge/Streamlit-Dashboard-red?logo=streamlit&style=for-the-badge)](https://assistive-device-dashboard-r2syjajgp3broag4y2zea3.streamlit.app/)
+
+
 ## Current Setup
 
 - App: `app.py`
